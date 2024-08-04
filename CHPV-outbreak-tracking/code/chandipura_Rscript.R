@@ -4,11 +4,14 @@
 
 pacman::p_load(rio, #for data import and export
                here, # for defining filepaths
-               tidyverse #data wrangling and basic visualization
+               tidyverse, #data wrangling and basic visualization
+               rnaturalearth #for obtaining and working with map data
                )
 
-# Case Data Import -------------------------------------------------------------
+# Get the shapefile of India
+india <- ne_states(country = "India", returnclass = "sf")
 
+# Case Data Import -------------------------------------------------------------
 chpv_trend <- import("CHPV-outbreak-tracking/chpv-trend.csv")
 
 all_chandipura_metadata <- import("CHPV-outbreak-tracking/all_chandipura_metadata.tsv") %>% 
@@ -37,7 +40,6 @@ all_chandipura_metadata <- import("CHPV-outbreak-tracking/all_chandipura_metadat
 export(all_chandipura_metadata, "all_chandipura_metadata_cleaned.csv")
 
 
-
 # Data Visualization  -----------------------------------------------------
 
 # Summarize the data to get the count of genomes per year per country
@@ -61,7 +63,30 @@ ggplot(genome_counts, aes(x = year, y = count, fill = country)) +
     legend.title = element_text(size = 14),
     legend.text = element_text(size = 12)) 
 
-
 # Export the plot
 
 ggsave("chandipura_genomes_by_year_country.png", width = 10, height = 6, dpi = 300)
+
+
+
+# Merge the cases data with the shapefile data
+india_chpv_cases <- merge(india, chpv_trend, by.x = "name", by.y = "state", all.x = TRUE)
+
+# Replace NA values with 0
+india_chpv_cases$total_cases[is.na(india_chpv_cases$total_cases)] <- 0
+
+# Plot the cases
+ggplot(data = india_chpv_cases) +
+  geom_sf(aes(fill = total_cases)) +
+  scale_fill_gradient(low = "white", high = "red", name = "Chandipura Virus Cases") +
+  labs(title = "Cases by State",
+       caption = "Data Source: @BrendanMIRROR, according to the health bulletin of Ministry of Health and Family Welfare (accessed on August 4, 2024)") +
+  theme_minimal()
+
+
+# Export the plot
+
+ggsave("chandipura_cases_by_state.png", width = 10, height = 6, dpi = 300)
+
+
+
